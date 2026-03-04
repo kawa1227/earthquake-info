@@ -1,3 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>防災情報</title>
+
+<style>
+
+body{
+font-family:sans-serif;
+margin:0;
+padding:10px;
+background:#f4f4f4;
+}
+
+.block{
+background:white;
+padding:15px;
+margin-bottom:15px;
+border-radius:10px;
+}
+
+h3{
+margin-bottom:8px;
+}
+
+#quake_info,#tsunami_info,#eew_box{
+white-space:pre-line;
+}
+
+button{
+padding:8px 14px;
+margin-top:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="block">
+
+<h2>防災情報</h2>
+
+次回更新：<span id="timer">30</span>秒<br>
+最終更新：<span id="lastUpdate">未更新</span>
+
+<br>
+<button onclick="manualUpdate()">🔄 更新</button>
+
+<hr>
+
+<h3>緊急地震速報</h3>
+<div id="eew_box">発表されていません。</div>
+
+<hr>
+
+<h3>地震情報</h3>
+<div id="quake_info">取得中...</div>
+
+<hr>
+
+<h3>津波情報</h3>
+<div id="tsunami_info">発表されていません。</div>
+
+</div>
+
 <script>
 
 let countdown=30;
@@ -17,38 +86,33 @@ if(data.length>0){
 
 const q=data[0];
 
-// ===== 地震情報表示 =====
-
+// 地震情報
 document.getElementById("quake_info").innerText=
 `【地震情報】
 発生時刻：${q.time || "不明"}
-発表時刻：${q.tt || new Date().toLocaleString()}
+発表時刻：${q.tt || "不明"}
 震源地：${q.anm || "不明"}
-深さ：${q.dep ? q.dep + " km" : "不明"}
+深さ：${q.dep ? q.dep+" km":"不明"}
 規模：M${q.mag || "不明"}`;
 
 
-// ===== 津波情報 =====
-
+// 津波情報
 let tsunamiText="この地震による津波の心配はありません。";
 
-if(q.tsunami && q.tsunami !== "None"){
+if(q.tsunami && q.tsunami!=="None"){
 tsunamiText="津波情報が発表されています。";
 }
 
 document.getElementById("tsunami_info").innerText=tsunamiText;
 
 
-// ===== EEW表示 =====
-
+// EEW表示
 let eewBox=document.getElementById("eew_box");
 
 if(q.maxi && q.maxi.includes("5")){
-
 eewBox.innerText=
 `◤◢◤ 緊急地震速報（警報） ◥◣◥
-強い揺れに警戒`;
-
+強い揺れに警戒してください`;
 }
 else{
 eewBox.innerText="発表されていません。";
@@ -88,3 +152,6 @@ document.getElementById("timer").innerText=countdown;
 loadData();
 
 </script>
+
+</body>
+</html>
