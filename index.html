@@ -1,45 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>防災速報</title>
+
+<style>
+body{
+margin:0;
+font-family:sans-serif;
+background:#111;
+color:white;
+padding:12px;
+}
+
+.header{
+font-size:24px;
+font-weight:bold;
+margin-bottom:12px;
+}
+
+.box{
+background:#1f1f1f;
+padding:15px;
+border-radius:12px;
+margin-bottom:15px;
+white-space:pre-line;
+line-height:1.5;
+}
+
+button{
+width:100%;
+padding:12px;
+font-size:16px;
+border:none;
+border-radius:8px;
+background:#444;
+color:white;
+margin-top:10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="header">◤ 防災速報 ◢</div>
+
+次回更新：<span id="timer">30</span>秒<br>
+最終更新：<span id="update_time">未更新</span>
+
+<hr>
+
+<div class="box" id="eew_box">
+緊急地震速報：発表されていません。
+</div>
+
+<div class="box" id="quake_box">
+地震情報取得中...
+</div>
+
+<div class="box" id="tsunami_box">
+津波情報：現在発表されていません。
+</div>
+
+<button onclick="copyText()">📋 コピーしてLINEへ</button>
+
 <script>
 
-let latestText="";
+let countdown = 30;
+let latestText = "";
 
-function formatTimeFull(t){
+function formatDateFull(t){
 if(!t) return "";
 
-const d=new Date(t);
-const month=d.getMonth()+1;
-const date=d.getDate();
-const h=d.getHours();
-const m=d.getMinutes().toString().padStart(2,"0");
+try{
+const d = new Date(t);
+
+const month = d.getMonth()+1;
+const date = d.getDate();
+const h = d.getHours();
+const m = d.getMinutes().toString().padStart(2,"0");
 
 return `${month}月${date}日 ${h}時${m}分頃`;
+
+}catch{
+return "";
+}
 }
 
 async function loadData(){
 
 try{
 
-const res=await fetch(
+const res = await fetch(
 "https://www.jma.go.jp/bosai/quake/data/list.json",
 {cache:"no-cache"}
 );
 
-const data=await res.json();
+const data = await res.json();
 if(!data.length) return;
 
-const q=data[0];
+const q = data[0];
 
-const timeText=formatTimeFull(q.time);
+const originTime = formatDateFull(q.time);
+const publishTime = formatDateFull(q.tt);
 
-// 地震情報
-latestText=
+// ===== 地震情報 =====
+latestText =
 `【地震情報】
-${timeText}
-${q.anm ? "震源地："+q.anm : ""}
-${q.dep ? "深さ："+q.dep+"km" : ""}
-${q.mag ? "規模：M"+q.mag : ""}
-この地震による津波の心配はありません.`;
+${originTime}
+震源地：${q.anm || ""}
+${q.dep ? "深さ："+q.dep+"km":""}
+${q.mag ? "規模：M"+q.mag:""}
+この地震による津波の心配はありません。`;
 
-document.getElementById("quake_box").innerText=latestText;
+document.getElementById("quake_box").innerText = latestText;
+
+
+// ===== 緊急地震速報 =====
+const eewBox = document.getElementById("eew_box");
+
+if(q.maxi && q.maxi.includes("5")){
+eewBox.innerText =
+`◤◢◤ 緊急地震速報（警報） ◥◣◥
+強い揺れに警戒してください
+対象地域：○○ ○○
+気象庁┃${publishTime}発表`;
+}
+else if(q.maxi){
+eewBox.innerText =
+`◤◢◤ 緊急地震速報（予報） ◥◣◥
+気象庁┃${publishTime}発表`;
+}
+else{
+eewBox.innerText = "緊急地震速報：発表されていません。";
+}
+
+
+// ===== 津波情報 =====
+document.getElementById("tsunami_box").innerText =
+"【津波情報】\n現在発表されていません。";
+
+document.getElementById("update_time").innerText =
+new Date().toLocaleString();
 
 }catch{
 console.log("取得失敗");
@@ -47,6 +151,27 @@ console.log("取得失敗");
 
 }
 
+function copyText(){
+navigator.clipboard.writeText(latestText);
+alert("コピーしました");
+}
+
+setInterval(()=>{
+
+countdown--;
+
+if(countdown <= 0){
+countdown = 30;
+loadData();
+}
+
+document.getElementById("timer").innerText = countdown;
+
+},1000);
+
 loadData();
 
 </script>
+
+</body>
+</html>
