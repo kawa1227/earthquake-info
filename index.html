@@ -3,31 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>防災速報 P2P版</title>
+<title>防災速報（P2Pメイン）</title>
 
 <style>
-
 body{
-margin:0;
 font-family:sans-serif;
+margin:0;
 background:#111;
 color:white;
 padding:12px;
 }
 
-.box{
-background:#222;
-padding:15px;
-border-radius:12px;
-margin-bottom:15px;
-white-space:pre-line;
-line-height:1.5;
-}
-
 .header{
 font-size:24px;
 font-weight:bold;
+margin-bottom:10px;
+}
+
+.box{
+background:#222;
+padding:15px;
+border-radius:10px;
 margin-bottom:15px;
+white-space:pre-line;
+line-height:1.5;
 }
 
 button{
@@ -35,118 +34,113 @@ width:100%;
 padding:12px;
 font-size:16px;
 background:#444;
-color:white;
 border:none;
 border-radius:8px;
+color:white;
 }
-
 </style>
 </head>
 
 <body>
 
-<div class="header">◤ 防災速報 P2P強化版 ◢</div>
+<div class="header">◤ 防災速報（P2Pメイン） ◢</div>
 
-次回更新：<span id="timer">30</span>秒<br>
-最終更新：<span id="update_time"></span>
+次回更新：<span id="timer">30</span>秒  
+最終更新：<span id="update_time">未更新</span>
 
-<div class="box" id="eew_box">
-緊急地震速報：発表されていません
-</div>
+<div class="box" id="eew_box">緊急地震速報：発表されていません</div>
+<div class="box" id="quake_box">地震情報取得中…</div>
+<div class="box" id="tsunami_box">津波情報：現在発表されていません</div>
 
-<div class="box" id="quake_box">
-地震情報取得中...
-</div>
-
-<div class="box" id="tsunami_box">
-津波情報：現在発表されていません
-</div>
-
-<button onclick="copyText()">コピー</button>
+<button onclick="copyText()">📋 コピー</button>
 
 <script>
 
 let countdown=30;
 let latestText="";
 
-/* P2P取得 */
-async function getP2P(){
+/* 日時フォーマット */
+function formatTimeFull(unixtime){
+if(!unixtime) return "";
+// P2P API often returns time as string like "2026/03/04 12:15:00"
+try{
+const d=new Date(unixtime);
+const m=d.getMonth()+1;
+const dt=d.getDate();
+const h=d.getHours();
+const mm=d.getMinutes().toString().padStart(2,"0");
+return `${m}月${dt}日 ${h}時${mm}分頃`;
+}catch{
+return "";
+}
+}
+
+/* P2P地震情報取得 */
+async function loadP2P(){
 
 try{
 
+// 最新1件を取る
 const res=await fetch(
 "https://api.p2pquake.net/v2/history?limit=1"
 );
 
 const data=await res.json();
+if(!data.length) return;
 
-if(!data.length) return null;
+// P2P地震情報は array の最初
+const info=data[0];
 
-return data[0];
+// earthquakeブロックがメイン
+const eq=info.earthquake;
 
-}catch{
-return null;
-}
+/* 発生時刻 */
+const origin=formatTimeFull(eq.time);
 
-}
-
-function formatTime(t){
-
-if(!t) return "";
-
-const d=new Date(t);
-
-return `${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}時${d.getMinutes().toString().padStart(2,"0")}分頃`;
-
-}
-
-async function loadData(){
-
-try{
-
-const p2p=await getP2P();
-if(!p2p) return;
-
-const timeText=formatTime(p2p.time);
-
-/* 地震情報 */
+/* 地震情報を組み立て */
 latestText=
 `【地震情報】
-${timeText}
-震源地：${p2p.hypocenter || ""}
-深さ：${p2p.depth ? p2p.depth+"km":""}
-規模：M${p2p.mag || ""}
-最大震度：${p2p.maxi || ""}
+${origin}
+震源地：${eq.hypocenter?.name || ""}
+深さ：${eq.hypocenter?.depth ? eq.hypocenter.depth+"km":""}
+規模：M${eq.hypocenter?.magnitude||""}
+最大震度：${eq.maxScale || ""}
 
-この地震による津波の心配はありません`;
+この地震による津波の心配はありません。`;
 
 document.getElementById("quake_box").innerText=latestText;
 
-/* EEW表示 */
+/* 緊急地震速報 */
 const eewBox=document.getElementById("eew_box");
-
-if(p2p.maxi && p2p.maxi.includes("5")){
+if(info.type === "Eew"){ 
+// 緊急地震速報判定
 eewBox.innerText=
-`◤◢◤ 緊急地震速報（警報） ◥◣◥
-強い揺れに警戒`;
-}
-else if(p2p.maxi){
-eewBox.innerText=
-"◤◢◤ 緊急地震速報（予報） ◥◣◥";
-}
-else{
+`◤◢◤ 緊急地震速報（${info.code===554?"警報":"予報"}） ◥◣◥
+強い揺れに警戒！
+対象地域：${eq.hypocenter?.name || ""}`;
+} else {
 eewBox.innerText="緊急地震速報：発表されていません";
 }
 
-/* 津波 */
-document.getElementById("tsunami_box").innerText=
-p2p.tsunami || "【津波情報】現在発表されていません";
+/* 津波情報 */
+const tsunamiDisplay=document.getElementById("tsunami_box");
+
+// P2P tsunami 値がある場合
+if(info.tsunami){
+tsunamiDisplay.innerText=
+`【津波情報】
+${info.tsunami}`;
+}else{
+tsunamiDisplay.innerText=
+"【津波情報】現在発表されていません";
+}
 
 document.getElementById("update_time").innerText=
 new Date().toLocaleString();
 
-}catch{
-console.log("取得失敗");
+}catch(err){
+console.error(err);
+document.getElementById("quake_box").innerText="取得に失敗しました";
 }
 
 }
@@ -159,17 +153,15 @@ alert("コピーしました");
 setInterval(()=>{
 
 countdown--;
-
 if(countdown<=0){
 countdown=30;
-loadData();
+loadP2P();
 }
-
 document.getElementById("timer").innerText=countdown;
 
 },1000);
 
-loadData();
+loadP2P();
 
 </script>
 
