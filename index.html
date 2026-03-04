@@ -3,60 +3,69 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>防災情報</title>
+<title>防災速報</title>
 
 <style>
 body{
-font-family:sans-serif;
 margin:0;
-padding:10px;
-background:#f4f4f4;
+font-family:sans-serif;
+background:#111;
+color:white;
 }
 
-.block{
-background:white;
+.screen{
 padding:15px;
-margin-bottom:15px;
+}
+
+.info{
+background:#222;
+padding:15px;
 border-radius:10px;
+margin-bottom:15px;
+white-space:pre-line;
+}
+
+.title{
+font-size:24px;
+font-weight:bold;
+margin-bottom:15px;
 }
 
 button{
-padding:8px 14px;
+width:100%;
+padding:12px;
+font-size:16px;
 margin-top:10px;
 }
-
 </style>
-
 </head>
 
 <body>
 
-<div class="block">
+<div class="screen">
 
-<h2>防災情報</h2>
+<div class="title">◤ 防災速報 ◢</div>
 
 次回更新：<span id="timer">30</span>秒<br>
-最終更新：<span id="lastUpdate">未更新</span>
-
-<br>
-<button onclick="manualUpdate()">更新</button>
+最終更新：<span id="update_time">未更新</span>
 
 <hr>
 
+<div class="info">
 <h3>緊急地震速報</h3>
 <div id="eew_box">発表されていません。</div>
+</div>
 
-<hr>
-
+<div class="info">
 <h3>地震情報</h3>
-<div id="quake_info">取得中...</div>
+<div id="quake_box">取得中...</div>
+<button onclick="copyText()">📋 コピー</button>
+</div>
 
-<button onclick="copyText()">コピー</button>
-
-<hr>
-
+<div class="info">
 <h3>津波情報</h3>
-<div id="tsunami_info">現在発表されていません。</div>
+<div id="tsunami_box">現在発表されていません。</div>
+</div>
 
 </div>
 
@@ -75,58 +84,52 @@ const res=await fetch(
 );
 
 const data=await res.json();
-
-if(data.length>0){
+if(!data.length) return;
 
 const q=data[0];
 
-// 地震情報
+// ===== 地震情報（必ず表示） =====
+
 latestText=
 `【地震情報】
-${q.time || "○月○日○時○分"}
+発生時刻：${q.time || "不明"}
+発表時刻：${q.tt || "不明"}
 震源地：${q.anm || "不明"}
 深さ：${q.dep ? q.dep+" km":"不明"}
 規模：M${q.mag || "不明"}
 
 この地震による津波の心配はありません。`;
 
-document.getElementById("quake_info").innerText=latestText;
+document.getElementById("quake_box").innerText=latestText;
 
 
-// EEW表示
-let eewBox=document.getElementById("eew_box");
+// ===== EEW =====
+
+const eewBox=document.getElementById("eew_box");
 
 if(q.maxi && q.maxi.includes("5")){
 eewBox.innerText=
-`◤◢◤ 緊急地震速報（警報） ◥◣◥
-強い揺れに警戒！
-対象地域：○○ ○○
-気象庁┃${q.time || "--:--"}発表`;
+"◤◢◤ 緊急地震速報（警報） ◥◣◥\n強い揺れに警戒";
 }
 else if(q.maxi){
 eewBox.innerText=
-`◤◢◤ 緊急地震速報（予報） ◥◣◥
-震源地：${q.anm || "不明"}
-気象庁┃${q.time || "--:--"}発表`;
+"◤◢◤ 緊急地震速報（予報） ◥◣◥";
 }
 else{
 eewBox.innerText="発表されていません。";
 }
 
 
-// 津波情報
-document.getElementById("tsunami_info").innerText=
+// ===== 津波 =====
+
+document.getElementById("tsunami_box").innerText=
 "【津波情報】\n現在発表されていません。";
 
-}
-
-document.getElementById("lastUpdate").innerText=
+document.getElementById("update_time").innerText=
 new Date().toLocaleString();
 
 }catch{
-
-setTimeout(loadData,3000);
-
+console.log("取得失敗");
 }
 
 }
@@ -134,11 +137,6 @@ setTimeout(loadData,3000);
 function copyText(){
 navigator.clipboard.writeText(latestText);
 alert("コピーしました");
-}
-
-function manualUpdate(){
-countdown=30;
-loadData();
 }
 
 setInterval(()=>{
