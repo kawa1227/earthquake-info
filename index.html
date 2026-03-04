@@ -3,88 +3,132 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>地震・津波情報</title>
+<title>防災情報</title>
+
 <style>
-body{font-family:sans-serif;margin:0;padding:10px;background:#f4f4f4}
-.block{background:white;padding:12px;margin-bottom:15px;border-radius:8px}
-hr{border:none;border-top:2px solid #000;margin:10px 0}
-button{margin-top:8px;padding:6px 12px}
-details{margin-top:10px}
-.purple{color:#800080;font-weight:bold}
-.red{color:red;font-weight:bold}
-.yellow{color:#c9a400;font-weight:bold}
-.blue{color:#0066cc;font-weight:bold}
+body{
+font-family:sans-serif;
+margin:0;
+padding:10px;
+background:#f4f4f4;
+}
+
+.block{
+background:white;
+padding:15px;
+margin-bottom:15px;
+border-radius:10px;
+}
+
+.warning{color:red;font-weight:bold;}
+.notice{color:orange;font-weight:bold;}
+
+button{
+padding:8px 14px;
+margin-top:10px;
+}
+
+#timer{
+font-weight:bold;
+color:#0066cc;
+}
 </style>
+
 </head>
+
 <body>
 
 <div class="block">
+
+<h2>防災情報</h2>
+
+次回更新まで：<span id="timer">60</span> 秒<br>
+最終更新：<span id="lastUpdate">未更新</span>
+
+<br>
+<button onclick="manualUpdate()">🔄 更新</button>
+
 <hr>
+
 <h3>緊急地震速報（警報）</h3>
 <div id="eew_warning">発表されていません。</div>
+
 <details>
-<summary>▼ 詳細</summary>
+<summary>▼ 詳細情報</summary>
 <div id="eew_detail"></div>
 </details>
-<button onclick="copyText('eew_warning')">コピー</button>
-<hr>
-</div>
 
-<div class="block">
 <hr>
+
 <h3>緊急地震速報（予報）</h3>
 <div id="eew_forecast">発表されていません。</div>
-<button onclick="copyText('eew_forecast')">コピー</button>
-<hr>
-</div>
 
-<div class="block">
 <hr>
+
 <h3>地震情報</h3>
 <div id="quake_info">取得中...</div>
-<button onclick="copyText('quake_info')">コピー</button>
-<hr>
-</div>
 
-<div class="block">
 <hr>
+
 <h3>津波情報</h3>
 <div id="tsunami_info">発表されていません。</div>
-<button onclick="copyText('tsunami_info')">コピー</button>
-<hr>
+
 </div>
 
 <script>
 
-async function loadQuake(){
- try{
-  const res=await fetch("https://www.jma.go.jp/bosai/quake/data/list.json");
-  const data=await res.json();
-  if(data.length>0){
-    const q=data[0];
-    document.getElementById("quake_info").innerText=
+let countdown=60;
+
+async function loadData(){
+
+try{
+
+const res=await fetch("https://www.jma.go.jp/bosai/quake/data/latest.json");
+const data=await res.json();
+
+if(data){
+
+const eq=data.earthquake;
+
+document.getElementById("quake_info").innerText=
 `【地震情報】
-${q.time}
-震源地：${q.anm}
-最大震度：${q.maxi}
-規模：M${q.mag}
-深さ：${q.dep}km
-気象庁┃${q.time}発表`;
-  }
- }catch{
-  document.getElementById("quake_info").innerText="取得に失敗しました。";
- }
+発生時刻：${eq?.originTime||"不明"}
+震源地：${eq?.hypocenter?.name||"不明"}
+深さ：${eq?.hypocenter?.depth||"不明"} km
+規模：M${eq?.magnitude||"不明"}`;
+
 }
 
-function copyText(id){
- const text=document.getElementById(id).innerText;
- navigator.clipboard.writeText(text);
- alert("コピーしました");
+document.getElementById("lastUpdate").innerText=
+new Date().toLocaleString();
+
+}catch{
+document.getElementById("quake_info").innerText="取得失敗";
 }
 
-loadQuake();
-setInterval(loadQuake,60000);
+}
+
+function manualUpdate(){
+countdown=60;
+loadData();
+}
+
+setInterval(()=>{
+
+countdown--;
+
+if(countdown<=0){
+countdown=60;
+loadData();
+}
+
+document.getElementById("timer").innerText=countdown;
+
+},1000);
+
+loadData();
 
 </script>
+
 </body>
 </html>
