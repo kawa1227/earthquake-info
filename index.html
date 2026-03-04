@@ -6,6 +6,7 @@
 <title>防災情報</title>
 
 <style>
+
 body{
 font-family:sans-serif;
 margin:0;
@@ -16,22 +17,30 @@ background:#f4f4f4;
 .block{
 background:white;
 padding:15px;
-margin-bottom:15px;
 border-radius:10px;
+margin-bottom:15px;
 }
 
-.warning{color:red;font-weight:bold;}
-.notice{color:orange;font-weight:bold;}
-
-button{
-padding:8px 14px;
-margin-top:10px;
+.flash_red{
+animation:redflash 0.3s infinite;
 }
 
-#timer{
-font-weight:bold;
-color:#0066cc;
+.flash_yellow{
+animation:yellowflash 0.3s infinite;
 }
+
+@keyframes redflash{
+0%{background:black;color:red;}
+50%{background:red;color:black;}
+100%{background:black;color:red;}
+}
+
+@keyframes yellowflash{
+0%{background:black;color:yellow;}
+50%{background:yellow;color:black;}
+100%{background:black;color:yellow;}
+}
+
 </style>
 
 </head>
@@ -42,60 +51,96 @@ color:#0066cc;
 
 <h2>防災情報</h2>
 
-次回更新まで：<span id="timer">60</span> 秒<br>
+次回更新：<span id="timer">30</span>秒<br>
 最終更新：<span id="lastUpdate">未更新</span>
 
-<br>
 <button onclick="manualUpdate()">🔄 更新</button>
 
 <hr>
 
-<h3>緊急地震速報（警報）</h3>
-<div id="eew_warning">発表されていません。</div>
+<h3>緊急地震速報</h3>
 
-<details>
-<summary>▼ 詳細情報</summary>
-<div id="eew_detail"></div>
-</details>
-
-<hr>
-
-<h3>緊急地震速報（予報）</h3>
-<div id="eew_forecast">発表されていません。</div>
+<div id="eew_box">
+発表されていません。
+</div>
 
 <hr>
 
 <h3>地震情報</h3>
-<div id="quake_info">取得中...</div>
+
+<div id="quake_info">
+取得中...
+</div>
 
 <hr>
 
 <h3>津波情報</h3>
-<div id="tsunami_info">発表されていません。</div>
+
+<div id="tsunami_info">
+発表されていません。
+</div>
 
 </div>
 
 <script>
 
-let countdown=60;
+let countdown=30;
 
 async function loadData(){
 
 try{
 
-const res=await fetch("https://www.jma.go.jp/bosai/quake/data/latest.json");
+const res=await fetch(
+"https://www.jma.go.jp/bosai/quake/data/list.json",
+{cache:"no-cache"}
+);
+
 const data=await res.json();
 
-if(data){
+if(data.length>0){
 
-const eq=data.earthquake;
+const q=data[0];
 
 document.getElementById("quake_info").innerText=
 `【地震情報】
-発生時刻：${eq?.originTime||"不明"}
-震源地：${eq?.hypocenter?.name||"不明"}
-深さ：${eq?.hypocenter?.depth||"不明"} km
-規模：M${eq?.magnitude||"不明"}`;
+発生時刻：${q.time}
+震源地：${q.anm}
+規模：M${q.mag}
+深さ：${q.dep}km`;
+
+
+// ===== EEW判定（仮実装） =====
+
+let eewBox=document.getElementById("eew_box");
+
+if(q.maxi && q.maxi.includes("5")){
+
+// 警報扱い
+eewBox.className="flash_red";
+
+eewBox.innerText=
+`◤◢◤ 緊急地震速報（警報） ◥◣◥
+強い揺れに警戒`;
+
+setTimeout(()=>{
+eewBox.className="";
+},5000);
+
+}
+else{
+
+// 予報扱い
+eewBox.className="flash_yellow";
+
+eewBox.innerText=
+`【緊急地震速報（予報）】
+地震の可能性`;
+
+setTimeout(()=>{
+eewBox.className="";
+},5000);
+
+}
 
 }
 
@@ -103,13 +148,15 @@ document.getElementById("lastUpdate").innerText=
 new Date().toLocaleString();
 
 }catch{
-document.getElementById("quake_info").innerText="取得失敗";
+
+setTimeout(loadData,3000);
+
 }
 
 }
 
 function manualUpdate(){
-countdown=60;
+countdown=30;
 loadData();
 }
 
@@ -118,7 +165,7 @@ setInterval(()=>{
 countdown--;
 
 if(countdown<=0){
-countdown=60;
+countdown=30;
 loadData();
 }
 
