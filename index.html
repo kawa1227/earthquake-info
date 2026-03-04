@@ -1,87 +1,3 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>防災情報</title>
-
-<style>
-
-body{
-font-family:sans-serif;
-margin:0;
-padding:10px;
-background:#f4f4f4;
-}
-
-.block{
-background:white;
-padding:15px;
-border-radius:10px;
-margin-bottom:15px;
-}
-
-.flash_red{
-animation:redflash 0.3s infinite;
-}
-
-.flash_yellow{
-animation:yellowflash 0.3s infinite;
-}
-
-@keyframes redflash{
-0%{background:black;color:red;}
-50%{background:red;color:black;}
-100%{background:black;color:red;}
-}
-
-@keyframes yellowflash{
-0%{background:black;color:yellow;}
-50%{background:yellow;color:black;}
-100%{background:black;color:yellow;}
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="block">
-
-<h2>防災情報</h2>
-
-次回更新：<span id="timer">30</span>秒<br>
-最終更新：<span id="lastUpdate">未更新</span>
-
-<button onclick="manualUpdate()">🔄 更新</button>
-
-<hr>
-
-<h3>緊急地震速報</h3>
-
-<div id="eew_box">
-発表されていません。
-</div>
-
-<hr>
-
-<h3>地震情報</h3>
-
-<div id="quake_info">
-取得中...
-</div>
-
-<hr>
-
-<h3>津波情報</h3>
-
-<div id="tsunami_info">
-発表されていません。
-</div>
-
-</div>
-
 <script>
 
 let countdown=30;
@@ -101,45 +17,41 @@ if(data.length>0){
 
 const q=data[0];
 
+// ===== 地震情報表示 =====
+
 document.getElementById("quake_info").innerText=
 `【地震情報】
-発生時刻：${q.time}
-震源地：${q.anm}
-規模：M${q.mag}
-深さ：${q.dep}km`;
+発生時刻：${q.time || "不明"}
+発表時刻：${q.tt || new Date().toLocaleString()}
+震源地：${q.anm || "不明"}
+深さ：${q.dep ? q.dep + " km" : "不明"}
+規模：M${q.mag || "不明"}`;
 
 
-// ===== EEW判定（仮実装） =====
+// ===== 津波情報 =====
+
+let tsunamiText="この地震による津波の心配はありません。";
+
+if(q.tsunami && q.tsunami !== "None"){
+tsunamiText="津波情報が発表されています。";
+}
+
+document.getElementById("tsunami_info").innerText=tsunamiText;
+
+
+// ===== EEW表示 =====
 
 let eewBox=document.getElementById("eew_box");
 
 if(q.maxi && q.maxi.includes("5")){
 
-// 警報扱い
-eewBox.className="flash_red";
-
 eewBox.innerText=
 `◤◢◤ 緊急地震速報（警報） ◥◣◥
 強い揺れに警戒`;
 
-setTimeout(()=>{
-eewBox.className="";
-},5000);
-
 }
 else{
-
-// 予報扱い
-eewBox.className="flash_yellow";
-
-eewBox.innerText=
-`【緊急地震速報（予報）】
-地震の可能性`;
-
-setTimeout(()=>{
-eewBox.className="";
-},5000);
-
+eewBox.innerText="発表されていません。";
 }
 
 }
@@ -176,6 +88,10 @@ document.getElementById("timer").innerText=countdown;
 loadData();
 
 </script>
+.block h3{
+margin-bottom:8px;
+}
 
-</body>
-</html>
+#quake_info,#tsunami_info,#eew_box{
+white-space:pre-line;
+}
